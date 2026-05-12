@@ -1,0 +1,5 @@
+textual
+ollama
+mediapipe
+opencv-python
+numpy
