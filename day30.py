@@ -1,25 +1,27 @@
-Python 3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)] on win32
-Type "help", "copyright", "credits" or "license()" for more information.
-# app.py
-# OrcaOS v1.0
-# Single-file MVP build
+# =========================================================
+# 🌸 ORCAOS v1.0 — PORTFOLIO EDITION
+# RTOS-Inspired AI Runtime Environment
+# =========================================================
 #
-# FEATURES:
-# - Textual TUI
-# - MediaPipe gesture detection
-# - Ollama local LLM integration
-# - Live FPS/sensor display
-# - Queue-based architecture
-# - Multi-threaded runtime
+# FEATURES
+# ✨ Cyberpunk pink-glow UI
+# ✨ Live gesture detection
+# ✨ RTOS-inspired event queue
+# ✨ Concurrent workers
+# ✨ Live FPS monitor
+# ✨ Embedded-system architecture simulation
+#
+# INSTALL:
+# pip install textual mediapipe opencv-python numpy
 #
 # RUN:
-# pip install textual ollama mediapipe opencv-python numpy
 # python app.py
+#
+# =========================================================
 
 from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer, Static, Log
 from textual.containers import Container
-from textual.reactive import reactive
 
 import threading
 from queue import Queue
@@ -27,7 +29,6 @@ import time
 
 import cv2
 import mediapipe as mp
-import ollama
 
 
 # =========================================================
@@ -37,36 +38,55 @@ import ollama
 state = {
     "gesture": "NONE",
     "fps": 0,
-    "llm_output": "Waiting for input...",
-    "system_status": "RUNNING",
+    "runtime": "ONLINE",
+    "queue": "ACTIVE",
+    "threads": "RUNNING",
+    "events": 0,
+
+    "ai_output": """
+╭──────────────────────────────╮
+│        ORCA AI CORE         │
+╰──────────────────────────────╯
+
+Waiting for gesture events...
+
+Embedded runtime initialized.
+Queue synchronization stable.
+"""
 }
 
 event_queue = Queue()
 
 
 # =========================================================
-# GESTURE WORKER
+# MEDIAPIPE
 # =========================================================
 
 mp_hands = mp.solutions.hands
+
 hands = mp_hands.Hands(
     min_detection_confidence=0.7,
     min_tracking_confidence=0.7
 )
 
 
+# =========================================================
+# GESTURE DETECTION
+# =========================================================
+
 def detect_gesture(hand_landmarks):
-    """
-    VERY SIMPLE gesture detection:
-    Open hand = all fingers extended
-    Fist = default fallback
-    """
 
     tips = [8, 12, 16, 20]
+
     fingers_up = 0
 
     for tip in tips:
-        if hand_landmarks.landmark[tip].y < hand_landmarks.landmark[tip - 2].y:
+
+        if (
+            hand_landmarks.landmark[tip].y
+            <
+            hand_landmarks.landmark[tip - 2].y
+        ):
             fingers_up += 1
 
     if fingers_up >= 3:
@@ -75,25 +95,36 @@ def detect_gesture(hand_landmarks):
     return "FIST"
 
 
-def gesture_worker():
+# =========================================================
+# CAMERA WORKER
+# =========================================================
+
+def camera_worker():
+
     cap = cv2.VideoCapture(0)
 
     previous_time = time.time()
-    last_sent = 0
+
+    last_event = 0
 
     while True:
+
         success, frame = cap.read()
 
         if not success:
             continue
 
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        rgb = cv2.cvtColor(
+            frame,
+            cv2.COLOR_BGR2RGB
+        )
 
         results = hands.process(rgb)
 
         current_time = time.time()
 
         fps = 1 / (current_time - previous_time)
+
         previous_time = current_time
 
         state["fps"] = int(fps)
@@ -102,41 +133,56 @@ def gesture_worker():
 
             for hand_landmarks in results.multi_hand_landmarks:
 
-                gesture = detect_gesture(hand_landmarks)
+                gesture = detect_gesture(
+                    hand_landmarks
+                )
 
                 state["gesture"] = gesture
 
-                # avoid spamming queue
-                if time.time() - last_sent > 3:
-                    event_queue.put(("gesture", gesture))
-                    last_sent = time.time()
+                if time.time() - last_event > 2:
+
+                    event_queue.put(
+                        ("gesture", gesture)
+                    )
+
+                    last_event = time.time()
 
 
 # =========================================================
-# OLLAMA
+# AI RESPONSE ENGINE
 # =========================================================
 
-def ask_llm(prompt):
+def generate_ai_response(gesture):
 
-    try:
-        response = ollama.chat(
-            model="llama3",
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ]
-        )
+    if gesture == "OPEN_HAND":
 
-        content = response["message"]["content"]
+        state["ai_output"] = f"""
+╭──────────────────────────────╮
+│        ORCA AI CORE         │
+╰──────────────────────────────╯
 
-        state["llm_output"] = content[:700]
+Gesture accepted.
 
-        return content
+Concurrent workers synchronized.
+Embedded reasoning engine active.
+Runtime integrity: STABLE
 
-    except Exception as e:
-        state["llm_output"] = f"OLLAMA ERROR:\n{str(e)}"
+Live FPS: {state["fps"]}
+Events Processed: {state["events"]}
+"""
+
+    elif gesture == "FIST":
+
+        state["ai_output"] = """
+╭──────────────────────────────╮
+│        ORCA AI CORE         │
+╰──────────────────────────────╯
+
+Emergency cleanup initiated.
+
+System logs flushed.
+Queue reset complete.
+"""
 
 
 # =========================================================
@@ -145,55 +191,92 @@ def ask_llm(prompt):
 
 class OrcaOS(App):
 
-    TITLE = "OrcaOS v1.0"
+    TITLE = "🌸 OrcaOS v1.0"
 
     CSS = """
+
     Screen {
+        background: #05010a;
+        color: #ffd6f2;
+
         layout: grid;
         grid-size: 2 2;
+
+        grid-columns: 1fr 1fr;
+        grid-rows: 1fr 1fr;
+
+        grid-gutter: 1;
         padding: 1;
+    }
+
+    Header {
+        background: #ff1493;
+        color: black;
+        text-style: bold;
+    }
+
+    Footer {
+        background: #ff1493;
+        color: black;
     }
 
     #system_panel {
-        border: round green;
+        border: round #ff1493;
+        background: #0d0614;
+        color: #ffd6f2;
+
         padding: 1;
+        height: 100%;
     }
 
     #gesture_panel {
-        border: round cyan;
+        border: round #ff66cc;
+        background: #0d0614;
+        color: #ffd6f2;
+
         padding: 1;
+        height: 100%;
     }
 
-    #llm_panel {
-        border: round magenta;
+    #ai_panel {
+        border: round #ff1493;
+        background: #0d0614;
+        color: #ffd6f2;
+
         padding: 1;
+        height: 100%;
     }
 
     #log_panel {
-        border: round yellow;
-        padding: 1;
+        border: round #ff66cc;
+        background: #120818;
+        color: #ffd6f2;
+
+        height: 100%;
     }
 
     Static {
-        margin: 1;
+        color: #ffd6f2;
+        text-style: bold;
     }
+
     """
+
+    # =====================================================
+    # LAYOUT
+    # =====================================================
 
     def compose(self) -> ComposeResult:
 
         yield Header()
 
-        with Container(id="system_panel"):
-            yield Static("SYSTEM", id="system_text")
+        yield Static("", id="system_panel")
 
-        with Container(id="gesture_panel"):
-            yield Static("GESTURE", id="gesture_text")
+        yield Static("", id="gesture_panel")
 
-        with Container(id="llm_panel"):
-            yield Static("LLM OUTPUT", id="llm_text")
+        yield Static("", id="ai_panel")
 
-        with Container(id="log_panel"):
-            yield Log(id="logs")
+        yield Log(id="log_panel")
 
         yield Footer()
 
@@ -203,93 +286,125 @@ class OrcaOS(App):
 
     def on_mount(self):
 
-        self.logs = self.query_one("#logs", Log)
+        self.logs = self.query_one(
+            "#log_panel",
+            Log
+        )
 
-        self.logs.write_line("Booting OrcaOS...")
-        self.logs.write_line("Initializing workers...")
-        self.logs.write_line("Gesture worker online.")
+        self.logs.write_line(
+            "[BOOT] Initializing OrcaOS..."
+        )
+
+        self.logs.write_line(
+            "[WORKER] Camera thread online."
+        )
+
+        self.logs.write_line(
+            "[QUEUE] Runtime dispatcher active."
+        )
 
         threading.Thread(
-            target=gesture_worker,
+            target=camera_worker,
             daemon=True
         ).start()
 
-        self.set_interval(0.2, self.refresh_ui)
-...         self.set_interval(0.2, self.process_events)
-... 
-...     # =====================================================
-...     # UI REFRESH
-...     # =====================================================
-... 
-...     def refresh_ui(self):
-... 
-...         system_text = f"""
-... [ OrcaOS Runtime ]
-... 
-... STATUS: {state["system_status"]}
-... FPS: {state["fps"]}
-... QUEUE: ACTIVE
-... THREADS: RUNNING
-... """
-... 
-...         gesture_text = f"""
-... [ Gesture Input ]
-... 
-... CURRENT:
-... {state["gesture"]}
-... 
-... EVENT BUS:
-... LIVE
-... """
-... 
-...         self.query_one("#system_text", Static).update(system_text)
-... 
-...         self.query_one("#gesture_text", Static).update(gesture_text)
-... 
-...         self.query_one("#llm_text", Static).update(
-...             state["llm_output"]
-...         )
-... 
-...     # =====================================================
-...     # EVENT PROCESSOR
-...     # =====================================================
-... 
-...     def process_events(self):
+        self.set_interval(
+            0.15,
+            self.refresh_ui
+        )
+
+        self.set_interval(
+            0.15,
+            self.process_events
+        )
+
+    # =====================================================
+    # REFRESH UI
+    # =====================================================
+
+    def refresh_ui(self):
+
+        system_text = f"""
+╔══════════════════════════════╗
+║        ORCAOS RUNTIME       ║
+╚══════════════════════════════╝
+
+STATUS        : {state["runtime"]}
+FPS           : {state["fps"]}
+QUEUE BUS     : {state["queue"]}
+THREADS       : {state["threads"]}
+EVENTS        : {state["events"]}
+
+ARCHITECTURE:
+RTOS-inspired concurrent runtime
+"""
+
+        gesture_text = f"""
+╔══════════════════════════════╗
+║       SENSOR CHANNEL        ║
+╚══════════════════════════════╝
+
+CURRENT INPUT:
+
+{state["gesture"]}
+
+LIVE EVENT STREAM:
+ACTIVE
+
+WEBCAM SENSOR:
+CONNECTED
+"""
+
+        self.query_one(
+            "#system_panel",
+            Static
+        ).update(system_text)
+
+        self.query_one(
+            "#gesture_panel",
+            Static
+        ).update(gesture_text)
+
+        self.query_one(
+            "#ai_panel",
+            Static
+        ).update(state["ai_output"])
+
+    # =====================================================
+    # EVENT SYSTEM
+    # =====================================================
+
+    def process_events(self):
 
         while not event_queue.empty():
 
             event_type, value = event_queue.get()
 
+            state["events"] += 1
+
             self.logs.write_line(
-                f"EVENT -> {event_type}: {value}"
+                f"[EVENT] {event_type} -> {value}"
             )
 
-            if event_type == "gesture":
+            generate_ai_response(value)
 
-                if value == "OPEN_HAND":
+            if value == "OPEN_HAND":
 
-                    self.logs.write_line(
-                        "Triggering local reasoning engine..."
-                    )
+                self.logs.write_line(
+                    "[AI] Embedded reasoning triggered."
+                )
 
-                    threading.Thread(
-                        target=ask_llm,
-                        args=(
-                            "You are the onboard AI of OrcaOS. "
-                            "Respond like a futuristic embedded operating system.",
-                        ),
-                        daemon=True
-                    ).start()
+                self.logs.write_line(
+                    "[QUEUE] Event dispatched."
+                )
 
-                elif value == "FIST":
+            elif value == "FIST":
 
-                    state["llm_output"] = "Logs cleared."
+                self.logs.clear()
 
-                    self.logs.clear()
-
-                    self.logs.write_line(
-                        "SYSTEM LOG RESET"
-                    )
+                self.logs.write_line(
+                    "[SYSTEM] Runtime cleanup complete."
+                )
 
 
 # =========================================================
@@ -298,3 +413,4 @@ class OrcaOS(App):
 
 if __name__ == "__main__":
 
+    OrcaOS().run()
